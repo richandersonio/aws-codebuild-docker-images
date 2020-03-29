@@ -61,40 +61,6 @@ RUN set -ex \
     && chmod +x /usr/local/bin/gitversion \
     && rm -rf  /tmp/*
 
-# Install Firefox
-RUN set -ex \
-    && yum install -y gtk3-devel dbus-glib-devel \
-    && wget -nv -O ~/FirefoxSetup.tar.bz2 "https://download.mozilla.org/?product=firefox-latest&os=linux64" \
-    && tar xjf ~/FirefoxSetup.tar.bz2 -C /opt/ \
-    && ln -s /opt/firefox/firefox /usr/local/bin/firefox \
-    && rm ~/FirefoxSetup.tar.bz2 \
-    && firefox --version
-
-# Install GeckoDriver
-RUN set -ex \
-    && curl -s https://api.github.com/repos/mozilla/geckodriver/releases/latest | grep browser_download_url | grep linux64.tar.gz | cut -d : -f 2,3 | tr -d ' "' | wget -nv -O /tmp/geckodriver-latest-linux64.tar.gz -qi - \
-    && tar -xzf /tmp/geckodriver-latest-linux64.tar.gz -C /opt \
-    && rm /tmp/geckodriver-latest-linux64.tar.gz \
-    && chmod 755 /opt/geckodriver \
-    && ln -s /opt/geckodriver /usr/bin/geckodriver \
-    && geckodriver --version
-
-# Install Chromium
-RUN set -ex \
-    && yum install -y chromium
-
-# Install ChromeDriver
-RUN set -ex \
-    && CHROME_VERSION=`chromium-browser --version | awk -F '[ .]' '{print $2"."$3"."$4}'` \
-    && CHROME_DRIVER_VERSION=`wget -nv -qO- chromedriver.storage.googleapis.com/LATEST_RELEASE_$CHROME_VERSION` \
-    && wget -nv -O /tmp/chromedriver_linux64.zip https://chromedriver.storage.googleapis.com/$CHROME_DRIVER_VERSION/chromedriver_linux64.zip \
-    && unzip /tmp/chromedriver_linux64.zip -d /opt \
-    && rm /tmp/chromedriver_linux64.zip \
-    && mv /opt/chromedriver /opt/chromedriver-$CHROME_DRIVER_VERSION \
-    && chmod 755 /opt/chromedriver-$CHROME_DRIVER_VERSION \
-    && ln -s /opt/chromedriver-$CHROME_DRIVER_VERSION /usr/bin/chromedriver \
-    && chromedriver --version
-
 # Install stunnel
 RUN set -ex \
    && STUNNEL_VERSION=5.56 \
@@ -159,33 +125,6 @@ RUN go get -u github.com/aws/aws-sdk-go/...
 
 #=======================End of layer: runtimes_1  =================
 FROM runtimes_1 AS runtimes_2
-
-#Docker 19
-ENV DOCKER_BUCKET="download.docker.com" \
-    DOCKER_CHANNEL="stable" \
-    DIND_COMMIT="3b5fac462d21ca164b3778647420016315289034" \
-    DOCKER_COMPOSE_VERSION="1.24.0"
-
-ENV DOCKER_SHA256="c3c8833e227b61fe6ce0bc5c17f97fa547035bef4ef17cf6601f30b0f20f4ce5"
-ENV DOCKER_VERSION="19.03.3"
-
-VOLUME /var/lib/docker
-
-RUN set -ex \
-    && curl -fSL "https://${DOCKER_BUCKET}/linux/static/${DOCKER_CHANNEL}/x86_64/docker-${DOCKER_VERSION}.tgz" -o docker.tgz \
-    && echo "${DOCKER_SHA256} *docker.tgz" | sha256sum -c - \
-    && tar --extract --file docker.tgz --strip-components 1  --directory /usr/local/bin/ \
-    && rm docker.tgz \
-    && docker -v \
-# set up subuid/subgid so that "--userns-remap=default" works out-of-the-box
-    && groupadd dockremap \
-    && useradd -g dockremap dockremap \
-    && echo 'dockremap:165536:65536' >> /etc/subuid \
-    && echo 'dockremap:165536:65536' >> /etc/subgid \
-    && wget -nv "https://raw.githubusercontent.com/docker/docker/${DIND_COMMIT}/hack/dind" -O /usr/local/bin/dind \
-    && curl -L https://github.com/docker/compose/releases/download/${DOCKER_COMPOSE_VERSION}/docker-compose-Linux-x86_64 > /usr/local/bin/docker-compose \
-    && chmod +x /usr/local/bin/dind /usr/local/bin/docker-compose \
-    && docker-compose version
 
 #=======================End of layer: runtimes_2  =================
 FROM runtimes_2 AS runtimes_3
